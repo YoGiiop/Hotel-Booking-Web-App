@@ -5,13 +5,6 @@ import User from "../models/User.js";
 // POST /api/clerk
 const clerkWebhooks = async (req, res) => {
   try {
-
-    // // Use different webhook secret for production vs local development
-    // const webhookSecret =
-    //   process.env.NODE_ENV === "production"
-    //     ? process.env.CLERK_WEBHOOK_SECRET
-    //     : "local_dummy_secret";
-
     // Create a Svix instance with clerk webhook secret.
     const whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET);
 
