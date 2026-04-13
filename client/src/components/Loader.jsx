@@ -13,7 +13,7 @@ const Loader = () => {
         navigate(`/${nextUrl}`);
       }, 8000);
     }
-  }, [nextUrl]);
+  }, [nextUrl, navigate]);
 
   return (
     <div className="flex justify-center items-center h-screen">

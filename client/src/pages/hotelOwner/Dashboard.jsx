@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { assets } from '../../assets/assets'
 import Title from '../../components/Title';
 import { useAppContext } from '../../context/AppContext';
@@ -13,7 +13,7 @@ const Dashboard = () => {
         totalRevenue: 0,
     });
 
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = useCallback(async () => {
         try {
             const { data } = await axios.get('/api/bookings/hotel', { headers: { Authorization: `Bearer ${await getToken()}` } })
             if (data.success) {
@@ -24,13 +24,13 @@ const Dashboard = () => {
         } catch (error) {
             toast.error(error.message)
         }
-    }
+    }, [axios, getToken, toast])
 
     useEffect(() => {
         if (user) {
             fetchDashboardData();
         }
-    }, [user]);
+    }, [user, fetchDashboardData]);
 
     return (
         <div>

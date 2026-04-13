@@ -8,6 +8,8 @@ const clerkWebhooks = async (req, res) => {
     // Create a Svix instance with clerk webhook secret.
     const whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET);
 
+    const payload = req.body?.toString?.() || JSON.stringify(req.body || {});
+
     // Getting Headers
     const headers = {
       "svix-id": req.headers["svix-id"],
@@ -16,15 +18,15 @@ const clerkWebhooks = async (req, res) => {
     };
 
     // Verifying Headers
-    await whook.verify(JSON.stringify(req.body), headers);
+    await whook.verify(payload, headers);
 
     // Getting Data from request body
-    const { data, type } = req.body;
+    const { data, type } = JSON.parse(payload);
 
     const userData = {
       _id: data.id,
       email: data.email_addresses[0].email_address,
-      username: data.first_name + " " + data.last_name,
+      username: [data.first_name, data.last_name].filter(Boolean).join(" ") || "User",
       image: data.image_url,
     };
 
@@ -52,7 +54,7 @@ const clerkWebhooks = async (req, res) => {
     res.json({ success: true, message: "Webhook Recieved" });
   } catch (error) {
     console.log(error.message);
-    res.json({ success: false, message: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 

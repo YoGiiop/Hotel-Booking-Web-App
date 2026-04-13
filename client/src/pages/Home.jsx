@@ -7,7 +7,6 @@ import RecommendedHotels from '../components/RecommendedHotels'
 
 const Home = () => {
 
-
     return (
         <>
             <Hero />

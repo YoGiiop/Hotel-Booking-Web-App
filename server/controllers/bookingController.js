@@ -4,14 +4,30 @@ import Hotel from "../models/Hotel.js";
 import Room from "../models/Room.js";
 import stripe from "stripe";
 
+const normalizeDate = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date;
+};
+
 // Function to Check Availablity of Room
 const checkAvailability = async ({ checkInDate, checkOutDate, room }) => {
 
   try {
+    const checkIn = normalizeDate(checkInDate);
+    const checkOut = normalizeDate(checkOutDate);
+
+    if (!room || !checkIn || !checkOut || checkOut <= checkIn) {
+      return false;
+    }
+
     const bookings = await Booking.find({
       room,
-      checkInDate: { $lte: checkOutDate },
-      checkOutDate: { $gte: checkInDate },
+      status: { $ne: "cancelled" },
+      checkInDate: { $lt: checkOut },
+      checkOutDate: { $gt: checkIn },
     });
 
     const isAvailable = bookings.length === 0;
@@ -19,6 +35,7 @@ const checkAvailability = async ({ checkInDate, checkOutDate, room }) => {
 
   } catch (error) {
     console.error(error.message);
+    return false;
   }
 };
 
@@ -27,6 +44,13 @@ const checkAvailability = async ({ checkInDate, checkOutDate, room }) => {
 export const checkAvailabilityAPI = async (req, res) => {
   try {
     const { room, checkInDate, checkOutDate } = req.body;
+    const checkIn = normalizeDate(checkInDate);
+    const checkOut = normalizeDate(checkOutDate);
+
+    if (!room || Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime()) || checkOut <= checkIn) {
+      return res.json({ success: false, message: "Invalid availability request" });
+    }
+
     const isAvailable = await checkAvailability({ checkInDate, checkOutDate, room });
     res.json({ success: true, isAvailable });
   } catch (error) {
@@ -39,9 +63,15 @@ export const checkAvailabilityAPI = async (req, res) => {
 export const createBooking = async (req, res) => {
   try {
 
-    const { room, checkInDate, checkOutDate, guests } = req.body;
+    const { room, checkInDate, checkOutDate, guests, paymentMethod } = req.body;
 
     const user = req.user._id;
+
+    const checkIn = normalizeDate(checkInDate);
+    const checkOut = normalizeDate(checkOutDate);
+    if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime()) || checkOut <= checkIn) {
+      return res.json({ success: false, message: "Invalid check-in or check-out date" });
+    }
 
     // Before Booking Check Availability
     const isAvailable = await checkAvailability({
@@ -56,24 +86,29 @@ export const createBooking = async (req, res) => {
 
     // Get totalPrice from Room
     const roomData = await Room.findById(room).populate("hotel");
+    if (!roomData || !roomData.hotel) {
+      return res.json({ success: false, message: "Room not found" });
+    }
     let totalPrice = roomData.pricePerNight;
 
     // Calculate totalPrice based on nights
-    const checkIn = new Date(checkInDate);
-    const checkOut = new Date(checkOutDate);
     const timeDiff = checkOut.getTime() - checkIn.getTime();
     const nights = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    if (nights < 1) {
+      return res.json({ success: false, message: "Booking must be at least 1 night" });
+    }
 
     totalPrice *= nights;
 
     const booking = await Booking.create({
       user,
       room,
-      hotel: roomData.hotel._id,
+      hotel: roomData.hotel._id.toString(),
       guests: +guests,
       checkInDate,
       checkOutDate,
       totalPrice,
+      paymentMethod: paymentMethod || "Pay At Hotel",
     });
 
     const mailOptions = {
@@ -96,14 +131,19 @@ export const createBooking = async (req, res) => {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    if (req.user.email) {
+      try {
+        await transporter.sendMail(mailOptions);
+      } catch (mailError) {
+        console.error("Booking email send failed:", mailError.message);
+      }
+    }
 
     res.json({ success: true, message: "Booking created successfully" });
 
   } catch (error) {
     console.log(error);
-    
-    res.json({ success: false, message: "Failed to create booking" });
+    res.json({ success: false, message: error.message || "Failed to create booking" });
   }
 };
 
@@ -145,10 +185,26 @@ export const stripePayment = async (req, res) => {
     const { bookingId } = req.body;
 
     const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.json({ success: false, message: "Booking not found" });
+    }
+    if (booking.user !== req.user._id) {
+      return res.status(403).json({ success: false, message: "Forbidden" });
+    }
+    if (booking.isPaid) {
+      return res.json({ success: false, message: "Booking is already paid" });
+    }
+
     const roomData = await Room.findById(booking.room).populate("hotel");
+    if (!roomData || !roomData.hotel) {
+      return res.json({ success: false, message: "Room not found" });
+    }
     const totalPrice = booking.totalPrice;
 
-    const { origin } = req.headers;
+    const origin = req.headers.origin || process.env.CLIENT_URL;
+    if (!origin) {
+      return res.json({ success: false, message: "Client URL is not configured" });
+    }
 
     const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -173,7 +229,7 @@ export const stripePayment = async (req, res) => {
       success_url: `${origin}/loader/my-bookings`,
       cancel_url: `${origin}/my-bookings`,
       metadata: {
-        bookingId,
+        bookingId: bookingId.toString(),
       },
     });
     res.json({ success: true, url: session.url });

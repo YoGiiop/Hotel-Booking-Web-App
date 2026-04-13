@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { assets } from '../assets/assets'
 import { useAppContext } from '../context/AppContext'
 import StarRating from '../components/StarRating'
@@ -109,11 +109,9 @@ const AllRooms = () => {
     }
 
     // Filter and sort rooms based on the selected filters and sort option
-    const filteredRooms = useMemo(() => {
-        return rooms
-            .filter(room => matchesRoomType(room) && matchesPriceRange(room) && filterDestination(room))
-            .sort(sortRooms);
-    }, [rooms, selectedFilters, selectedSort, searchParams]);
+    const filteredRooms = rooms
+        .filter(room => matchesRoomType(room) && matchesPriceRange(room) && filterDestination(room))
+        .sort(sortRooms);
 
     // Clear all filters
     const clearFilters = () => {

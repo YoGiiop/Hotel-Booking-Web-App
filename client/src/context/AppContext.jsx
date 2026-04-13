@@ -1,5 +1,5 @@
 import { useAuth, useUser } from "@clerk/clerk-react";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from 'react-hot-toast'
 import { useNavigate } from "react-router-dom";
@@ -29,7 +29,7 @@ export const AppProvider = ({ children }) => {
         "Pool Access": assets.poolIcon,
     };
 
-    const fetchUser = async () => {
+    const fetchUser = useCallback(async () => {
         try {
             const { data } = await axios.get('/api/user', { headers: { Authorization: `Bearer ${await getToken()}` } })
             if (data.success) {
@@ -45,7 +45,7 @@ export const AppProvider = ({ children }) => {
         } catch (error) {
             toast.error(error.message)
         }
-    }
+    }, [getToken])
 
     const fetchRooms = async () => {
         try {
@@ -65,7 +65,7 @@ export const AppProvider = ({ children }) => {
         if (user) {
             fetchUser();
         }
-    }, [user]);
+    }, [user, fetchUser]);
 
     useEffect(() => {
         fetchRooms();
@@ -90,4 +90,5 @@ export const AppProvider = ({ children }) => {
 
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAppContext = () => useContext(AppContext);

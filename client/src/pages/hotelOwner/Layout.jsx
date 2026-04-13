@@ -12,7 +12,7 @@ const Layout = () => {
         if (!isOwner) {
             navigate('/')
         }
-    }, [isOwner])
+    }, [isOwner, navigate])
 
     return (
         <div className='flex flex-col h-screen'>
