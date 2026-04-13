@@ -4,7 +4,7 @@
 
 QuickStay is a **full-featured hotel booking platform** built with the MERN stack, offering seamless booking experiences for travelers and powerful management tools for hotel owners. With secure payments, real-time availability, and beautiful dashboards, it's designed to be a **production-ready** solution.  
 
-🚀 **[Live Demo](https://quickstay-three-self.vercel.app/)**
+🚀 **[Live Demo](https://hotel-booking-web-app-swart.vercel.app/)**
 
 ---
 
