@@ -17,6 +17,7 @@ const RoomDetails = () => {
     const [guests, setGuests] = useState(1);
 
     const [isAvailable, setIsAvailable] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Check if the Room is Available
     const checkAvailability = async () => {
@@ -52,12 +53,16 @@ const RoomDetails = () => {
     const onSubmitHandler = async (e) => {
         try {
             e.preventDefault();
+            if (isSubmitting) return;
+
             if (!isAvailable) {
                 return checkAvailability();
             } else {
+                setIsSubmitting(true);
                 const token = await getToken();
                 if (!token) {
                     toast.error("Please sign in again to book this room");
+                    setIsSubmitting(false);
                     return;
                 }
 
@@ -82,6 +87,8 @@ const RoomDetails = () => {
             }
         } catch (error) {
             toast.error(error.response?.data?.message || error.message);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -235,9 +242,10 @@ const RoomDetails = () => {
                 </div>
                 <button
                     type="submit"
+                    disabled={isSubmitting}
                     className="bg-primary hover:bg-primary-dull active:scale-95 transition-all text-white rounded-md max-md:w-full max-md:mt-6 md:px-25 py-3 md:py-4 text-base cursor-pointer"
                 >
-                    {isAvailable ? "Book Now" : "Check Availability"}
+                    {isSubmitting ? "Booking..." : isAvailable ? "Book Now" : "Check Availability"}
                 </button>
             </form>
 

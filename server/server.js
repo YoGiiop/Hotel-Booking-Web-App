@@ -37,10 +37,6 @@ app.use("/api/bookings", bookingRouter);
 
 const PORT = process.env.PORT || 4000;
 
-// Vercel runs this file as a serverless function. Start a local listener only
-// when not running on Vercel.
-if (process.env.VERCEL !== "1") {
 	app.listen(PORT, () => console.log(`Server running on port http://localhost:${PORT}`));
-}
 
 export default app;
