@@ -39,6 +39,8 @@ export const protect = async (req, res, next) => {
           upsert: true,
         }
       );
+      // Always fetch the latest user (in case it was updated elsewhere)
+      user = await User.findById(userId);
     } catch {
       user = fallbackUser;
     }

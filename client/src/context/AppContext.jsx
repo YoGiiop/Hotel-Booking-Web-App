@@ -79,7 +79,8 @@ export const AppProvider = ({ children }) => {
         showHotelReg, setShowHotelReg,
         facilityIcons,
         rooms, setRooms,
-        searchedCities, setSearchedCities
+        searchedCities, setSearchedCities,
+        fetchUser // Expose fetchUser for use in components
     };
 
     return (

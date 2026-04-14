@@ -4,22 +4,24 @@ import toast from "react-hot-toast";
 import { assets, cities } from "../assets/assets";
 
 const HotelReg = () => {
-    const { setShowHotelReg, axios, getToken, setIsOwner } = useAppContext();
+    const { setShowHotelReg, axios, getToken, setIsOwner, fetchUser } = useAppContext();
 
     const [name, setName] = useState("");
     const [address, setAddress] = useState("");
     const [contact, setContact] = useState("");
     const [city, setCity] = useState("");
 
+
     const onSubmitHandler = async (event) => {
         try {
             event.preventDefault();
 
+            // If you want to support images, use FormData and append images here
             const { data } = await axios.post(`/api/hotels/`, { name, contact, address, city }, { headers: { Authorization: `Bearer ${await getToken()}` } });
 
             if (data.success) {
                 toast.success(data.message);
-                setIsOwner(true);
+                if (fetchUser) await fetchUser(); // Refetch user data to update isOwner
                 setShowHotelReg(false);
             } else {
                 toast.error(data.message);

@@ -122,7 +122,14 @@ export const createBooking = async (req, res) => {
     if (!roomData || !roomData.hotel) {
       return res.json({ success: false, message: "Room not found" });
     }
+    
+    // Restrict hotel owners from booking their own hotels
     let totalPrice = roomData.pricePerNight;
+
+      // Restrict hotel owners from booking their own hotels
+      if (roomData.hotel.owner && roomData.hotel.owner.toString() === user.toString()) {
+        return res.json({ success: false, message: "Owners cannot book their own hotels." });
+      }
 
     // Calculate totalPrice based on nights
     const timeDiff = checkOut.getTime() - checkIn.getTime();
