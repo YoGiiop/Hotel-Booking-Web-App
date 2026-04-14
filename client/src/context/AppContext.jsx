@@ -30,8 +30,33 @@ export const AppProvider = ({ children }) => {
         "Pool Access": assets.poolIcon,
     };
 
+    const checkOwnerFromHotels = useCallback(async () => {
+        try {
+            if (!user?.id) return false;
+
+            const { data } = await axios.get('/api/hotels');
+            const ownerStatus = Boolean(data?.hotels?.some((hotel) => hotel.owner === user.id));
+
+            console.log('[AppContext] checkOwnerFromHotels response', {
+                clerkUserId: user.id,
+                hotelsCount: data?.hotels?.length || 0,
+                ownerStatus,
+            });
+
+            return ownerStatus;
+        } catch (error) {
+            console.log('[AppContext] checkOwnerFromHotels error', error?.response?.data || error.message);
+            return false;
+        }
+    }, [user]);
+
     const checkOwnerStatus = useCallback(async () => {
         try {
+            const ownerFromHotels = await checkOwnerFromHotels();
+            if (ownerFromHotels) {
+                return true;
+            }
+
             const token = await getToken();
             const { data } = await axios.get('/api/bookings/hotel', {
                 headers: { Authorization: `Bearer ${token}` }
@@ -44,7 +69,7 @@ export const AppProvider = ({ children }) => {
             console.log('[AppContext] checkOwnerStatus error', error?.response?.data || error.message);
             return false;
         }
-    }, [getToken]);
+    }, [checkOwnerFromHotels, getToken]);
 
     const refreshOwnerStatus = useCallback(async () => {
         try {
