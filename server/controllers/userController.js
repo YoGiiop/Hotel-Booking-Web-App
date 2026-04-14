@@ -52,3 +52,38 @@ export const storeRecentSearchedCities = async (req, res) => {
     res.json({ success: false, message: error.message });
   }
 };
+
+// Debug owner state for current authenticated user
+// GET /api/user/debug-owner
+export const getOwnerDebugData = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    const ownedHotels = userId
+      ? await Hotel.find({ owner: userId }).select("_id name city owner createdAt")
+      : [];
+    const totalHotels = await Hotel.countDocuments();
+    const sampleHotels = await Hotel.find().select("_id name city owner createdAt").limit(10).sort({ createdAt: -1 });
+
+    const payload = {
+      success: true,
+      authUserId: userId,
+      dbUser: req.user
+        ? {
+            _id: req.user._id,
+            username: req.user.username,
+            email: req.user.email,
+            role: req.user.role,
+          }
+        : null,
+      totalHotels,
+      ownedHotelsCount: ownedHotels.length,
+      ownedHotels,
+      sampleHotels,
+    };
+
+    console.log("[getOwnerDebugData]", payload);
+    res.json(payload);
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+};
