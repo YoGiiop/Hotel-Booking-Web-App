@@ -13,10 +13,11 @@ export const AppProvider = ({ children }) => {
 
     const currency = import.meta.env.VITE_CURRENCY || "$";
     const navigate = useNavigate();
-    const { user } = useUser();
+    const { user, isLoaded } = useUser();
     const { getToken } = useAuth()
 
     const [isOwner, setIsOwner] = useState(false);
+    const [isOwnerLoading, setIsOwnerLoading] = useState(true);
     const [showHotelReg, setShowHotelReg] = useState(false);
     const [rooms, setRooms] = useState([]);
     const [searchedCities, setSearchedCities] = useState([]); // max 3 recent searched cities
@@ -31,10 +32,11 @@ export const AppProvider = ({ children }) => {
 
     const fetchUser = useCallback(async () => {
         try {
+            setIsOwnerLoading(true);
             const { data } = await axios.get('/api/user', { headers: { Authorization: `Bearer ${await getToken()}` } })
             if (data.success) {
                 setIsOwner(data.role === "hotelOwner");
-                setSearchedCities(data.recentSearchedCities)
+                setSearchedCities(data.recentSearchedCities || [])
             } else {
                 // Retry Fetching User Details after 5 seconds
                 // Useful when user creates account using email & password
@@ -44,6 +46,8 @@ export const AppProvider = ({ children }) => {
             }
         } catch (error) {
             toast.error(error.message)
+        } finally {
+            setIsOwnerLoading(false);
         }
     }, [getToken])
 
@@ -62,10 +66,16 @@ export const AppProvider = ({ children }) => {
     }
 
     useEffect(() => {
+        if (!isLoaded) return;
+
         if (user) {
             fetchUser();
+        } else {
+            setIsOwner(false);
+            setSearchedCities([]);
+            setIsOwnerLoading(false);
         }
-    }, [user, fetchUser]);
+    }, [user, isLoaded, fetchUser]);
 
     useEffect(() => {
         fetchRooms();
@@ -75,6 +85,7 @@ export const AppProvider = ({ children }) => {
         currency, navigate,
         user, getToken,
         isOwner, setIsOwner,
+        isOwnerLoading,
         axios,
         showHotelReg, setShowHotelReg,
         facilityIcons,

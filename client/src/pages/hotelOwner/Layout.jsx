@@ -6,13 +6,17 @@ import { useAppContext } from '../../context/AppContext'
 
 const Layout = () => {
 
-    const { isOwner, navigate } = useAppContext()
+    const { isOwner, isOwnerLoading, navigate, user } = useAppContext()
 
     useEffect(() => {
-        if (!isOwner) {
+        if (!isOwnerLoading && (!user || !isOwner)) {
             navigate('/')
         }
-    }, [isOwner, navigate])
+    }, [isOwner, isOwnerLoading, navigate, user])
+
+    if (isOwnerLoading) {
+        return <div className='flex items-center justify-center h-screen'>Loading dashboard...</div>
+    }
 
     return (
         <div className='flex flex-col h-screen'>
