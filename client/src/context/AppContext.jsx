@@ -112,7 +112,7 @@ export const AppProvider = ({ children }) => {
 
             console.log('[AppContext] refreshOwnerStatus /api/user', data);
 
-            let ownerStatus = data?.role === 'hotelOwner';
+            let ownerStatus = Boolean(data?.isOwner || data?.ownedHotelsCount > 0 || data?.role === 'hotelOwner');
 
             if (!ownerStatus) {
                 ownerStatus = await checkOwnerStatus();
@@ -138,7 +138,7 @@ export const AppProvider = ({ children }) => {
             setIsOwnerLoading(true);
             const { data } = await axios.get('/api/user', { headers: { Authorization: `Bearer ${await getToken()}` } })
             if (data.success) {
-                let ownerStatus = data.role === "hotelOwner";
+                let ownerStatus = Boolean(data.isOwner || data.ownedHotelsCount > 0 || data.role === "hotelOwner");
 
                 if (!ownerStatus) {
                     ownerStatus = await checkOwnerStatus();

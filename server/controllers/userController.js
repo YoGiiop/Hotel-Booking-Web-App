@@ -5,19 +5,21 @@ import Hotel from "../models/Hotel.js";
 // GET /api/user/
 export const getUserData = async (req, res) => {
   try {
-    const ownedHotel = req.user?._id ? await Hotel.findOne({ owner: req.user._id }).select("_id") : null;
-    const role = ownedHotel ? "hotelOwner" : req.user?.role || "user";
+    const ownedHotelsCount = req.user?._id ? await Hotel.countDocuments({ owner: req.user._id }) : 0;
+    const isOwner = ownedHotelsCount > 0;
+    const role = isOwner ? "hotelOwner" : req.user?.role || "user";
     const recentSearchedCities = req.user?.recentSearchedCities || [];
 
     console.log("[getUserData] owner resolution", {
       userId: req.user?._id,
       dbUserRole: req.user?.role,
-      hasOwnedHotel: Boolean(ownedHotel),
+      ownedHotelsCount,
+      isOwner,
       resolvedRole: role,
       recentSearchedCitiesCount: recentSearchedCities.length,
     });
 
-    if (ownedHotel && req.user?.role !== "hotelOwner" && req.user?._id) {
+    if (isOwner && req.user?.role !== "hotelOwner" && req.user?._id) {
       req.user.role = "hotelOwner";
       await req.user.save();
 
@@ -27,7 +29,8 @@ export const getUserData = async (req, res) => {
       });
     }
 
-    res.json({ success: true, role, recentSearchedCities });
+    res.set("Cache-Control", "no-store");
+    res.json({ success: true, role, isOwner, ownedHotelsCount, recentSearchedCities });
   } catch (error) {
     res.json({ success: false, message: error.message });
   }
@@ -81,6 +84,7 @@ export const getOwnerDebugData = async (req, res) => {
       sampleHotels,
     };
 
+    res.set("Cache-Control", "no-store");
     console.log("[getOwnerDebugData]", payload);
     res.json(payload);
   } catch (error) {
