@@ -1,4 +1,5 @@
 import logo from './logo.svg'
+import defaultHotelImg from './roomImg1.png'
 import searchIcon from './searchIcon.svg'
 import userIcon from './userIcon.svg'
 import calenderIcon from './calenderIcon.svg'
@@ -72,6 +73,7 @@ export const assets = {
     uploadArea,
     totalBookingIcon,
     totalRevenueIcon,
+    defaultHotelImg,
 }
 
 export const cities = [
