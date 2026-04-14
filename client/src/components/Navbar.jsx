@@ -24,7 +24,20 @@ const Navbar = () => {
     const location = useLocation();
 
     const { openSignIn } = useClerk()
-    const { user, setShowHotelReg, isOwner, navigate } = useAppContext()
+    const { user, setShowHotelReg, isOwner, isOwnerLoading, navigate, refreshOwnerStatus } = useAppContext()
+
+    const handleOwnerClick = async () => {
+        if (!user) return;
+
+        const ownerStatus = isOwner ? true : await refreshOwnerStatus();
+        console.log('[Navbar] owner click result', { isOwner, ownerStatus, isOwnerLoading });
+
+        if (ownerStatus) {
+            navigate('/owner');
+        } else {
+            setShowHotelReg(true);
+        }
+    }
 
     useEffect(() => {
         if (location.pathname !== "/") {
@@ -58,8 +71,8 @@ const Navbar = () => {
                 ))}
                 {
                     user && (
-                        <button className={`border px-4 py-1 text-sm font-light rounded-full cursor-pointer ${isScrolled ? 'text-black' : 'text-white'} transition-all`} onClick={() => isOwner ? navigate('/owner') : setShowHotelReg(true)}>
-                            {isOwner ? 'Dashboard' : 'List Your Hotel'}
+                        <button className={`border px-4 py-1 text-sm font-light rounded-full cursor-pointer ${isScrolled ? 'text-black' : 'text-white'} transition-all`} onClick={handleOwnerClick}>
+                            {isOwnerLoading ? 'Checking...' : isOwner ? 'Dashboard' : 'List Your Hotel'}
                         </button>
                     )
                 }
@@ -102,8 +115,8 @@ const Navbar = () => {
                         <NavLink to="/my-bookings" onClick={() => setIsMenuOpen(false)}>
                             My Bookings
                         </NavLink>
-                        <button className="border px-4 py-1 text-sm font-light rounded-full cursor-pointer transition-all" onClick={() => isOwner ? navigate('/owner') : setShowHotelReg(true)}>
-                            {isOwner ? 'Dashboard' : 'List Your Hotel'}
+                        <button className="border px-4 py-1 text-sm font-light rounded-full cursor-pointer transition-all" onClick={handleOwnerClick}>
+                            {isOwnerLoading ? 'Checking...' : isOwner ? 'Dashboard' : 'List Your Hotel'}
                         </button>
                     </>
                 )}

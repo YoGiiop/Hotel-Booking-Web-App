@@ -37,11 +37,45 @@ export const AppProvider = ({ children }) => {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
+            console.log('[AppContext] checkOwnerStatus response', data);
+
             return Boolean(data?.success);
-        } catch {
+        } catch (error) {
+            console.log('[AppContext] checkOwnerStatus error', error?.response?.data || error.message);
             return false;
         }
     }, [getToken]);
+
+    const refreshOwnerStatus = useCallback(async () => {
+        try {
+            setIsOwnerLoading(true);
+            const token = await getToken();
+            const { data } = await axios.get('/api/user', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            console.log('[AppContext] refreshOwnerStatus /api/user', data);
+
+            let ownerStatus = data?.role === 'hotelOwner';
+
+            if (!ownerStatus) {
+                ownerStatus = await checkOwnerStatus();
+            }
+
+            setIsOwner(ownerStatus);
+            setSearchedCities(data?.recentSearchedCities || []);
+
+            console.log('[AppContext] refreshOwnerStatus final', { ownerStatus });
+
+            return ownerStatus;
+        } catch (error) {
+            console.log('[AppContext] refreshOwnerStatus error', error?.response?.data || error.message);
+            setIsOwner(false);
+            return false;
+        } finally {
+            setIsOwnerLoading(false);
+        }
+    }, [checkOwnerStatus, getToken]);
 
     const fetchUser = useCallback(async () => {
         try {
@@ -56,6 +90,12 @@ export const AppProvider = ({ children }) => {
 
                 setIsOwner(ownerStatus);
                 setSearchedCities(data.recentSearchedCities || [])
+                console.log('[AppContext] fetchUser resolved', {
+                    clerkUserId: user?.id,
+                    apiRole: data.role,
+                    ownerStatus,
+                    recentSearchedCities: data.recentSearchedCities || []
+                });
             } else {
                 // Retry Fetching User Details after 5 seconds
                 // Useful when user creates account using email & password
@@ -64,11 +104,12 @@ export const AppProvider = ({ children }) => {
                 }, 2000);
             }
         } catch (error) {
+            console.log('[AppContext] fetchUser error', error?.response?.data || error.message);
             toast.error(error.message)
         } finally {
             setIsOwnerLoading(false);
         }
-    }, [checkOwnerStatus, getToken])
+    }, [checkOwnerStatus, getToken, user])
 
     const fetchRooms = async () => {
         try {
@@ -105,6 +146,7 @@ export const AppProvider = ({ children }) => {
         user, getToken,
         isOwner, setIsOwner,
         isOwnerLoading,
+        refreshOwnerStatus,
         axios,
         showHotelReg, setShowHotelReg,
         facilityIcons,

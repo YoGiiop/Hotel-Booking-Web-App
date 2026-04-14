@@ -9,7 +9,20 @@ const Layout = () => {
     const { isOwner, isOwnerLoading, navigate, user } = useAppContext()
 
     useEffect(() => {
+        console.log('[Owner Layout] state', {
+            clerkUserId: user?.id,
+            isOwner,
+            isOwnerLoading,
+        })
+    }, [isOwner, isOwnerLoading, user])
+
+    useEffect(() => {
         if (!isOwnerLoading && (!user || !isOwner)) {
+            console.log('[Owner Layout] redirecting home', {
+                clerkUserId: user?.id,
+                isOwner,
+                isOwnerLoading,
+            })
             navigate('/')
         }
     }, [isOwner, isOwnerLoading, navigate, user])
