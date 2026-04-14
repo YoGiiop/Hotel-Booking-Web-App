@@ -43,7 +43,7 @@ export const registerHotel = async (req, res) => {
     try {
       await User.findByIdAndUpdate(owner,
         { role: "hotelOwner" },
-        { new: true }
+        { new: true, upsert: true, setDefaultsOnInsert: true }
       );
       if (req.user) req.user.role = "hotelOwner";
     } catch (err) {

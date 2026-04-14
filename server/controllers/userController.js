@@ -1,10 +1,19 @@
 
+import Hotel from "../models/Hotel.js";
+
 // Get User data using Token (JWT)
 // GET /api/user/
 export const getUserData = async (req, res) => {
   try {
-    const role = req.user?.role || "user";
-    const recentSearchedCities = req.user.recentSearchedCities;
+    const ownedHotel = req.user?._id ? await Hotel.findOne({ owner: req.user._id }).select("_id") : null;
+    const role = ownedHotel ? "hotelOwner" : req.user?.role || "user";
+    const recentSearchedCities = req.user?.recentSearchedCities || [];
+
+    if (ownedHotel && req.user?.role !== "hotelOwner" && req.user?._id) {
+      req.user.role = "hotelOwner";
+      await req.user.save();
+    }
+
     res.json({ success: true, role, recentSearchedCities });
   } catch (error) {
     res.json({ success: false, message: error.message });
