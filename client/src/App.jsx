@@ -15,8 +15,6 @@ import MyBookings from "./pages/MyBookings";
 import Loader from "./components/Loader";
 import About from "./pages/About";
 import Experience from "./pages/Experience";
-import { SpeedInsights } from '@vercel/speed-insights/react';
-import { Analytics } from '@vercel/analytics/react';
 
 const App = () => {
   // Check Is Route Starts With Owner
@@ -46,8 +44,6 @@ const App = () => {
         </Routes>
       </div>
       <Footer />
-      <SpeedInsights />
-      <Analytics />
     </div>
   );
 };
