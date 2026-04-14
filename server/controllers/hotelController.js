@@ -10,6 +10,13 @@ export const registerHotel = async (req, res) => {
     // Always use req.user._id to guarantee user exists
     const owner = req.user._id;
 
+    console.log("[registerHotel] start", {
+      owner,
+      reqUserRole: req.user?.role,
+      hotelName: name,
+      city,
+    });
+
     // Check if already registered
     const existingHotel = await Hotel.findOne({ owner });
     if (existingHotel) {
@@ -41,14 +48,28 @@ export const registerHotel = async (req, res) => {
 
     // Update user role (optional)
     try {
-      await User.findByIdAndUpdate(owner,
+      const updatedUser = await User.findByIdAndUpdate(owner,
         { role: "hotelOwner" },
         { new: true, upsert: true, setDefaultsOnInsert: true }
       );
       if (req.user) req.user.role = "hotelOwner";
+
+      console.log("[registerHotel] owner role updated", {
+        owner,
+        updatedUserId: updatedUser?._id,
+        updatedUserRole: updatedUser?.role,
+      });
     } catch (err) {
       console.error('[registerHotel] Error updating user role:', err);
     }
+
+    const savedHotel = await Hotel.findOne({ owner }).select("_id owner name city");
+    const savedUser = await User.findById(owner).select("_id role email username");
+
+    console.log("[registerHotel] verification", {
+      hotel: savedHotel,
+      user: savedUser,
+    });
 
     res.json({
       success: true,

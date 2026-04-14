@@ -30,12 +30,31 @@ export const AppProvider = ({ children }) => {
         "Pool Access": assets.poolIcon,
     };
 
+    const checkOwnerStatus = useCallback(async () => {
+        try {
+            const token = await getToken();
+            const { data } = await axios.get('/api/bookings/hotel', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            return Boolean(data?.success);
+        } catch {
+            return false;
+        }
+    }, [getToken]);
+
     const fetchUser = useCallback(async () => {
         try {
             setIsOwnerLoading(true);
             const { data } = await axios.get('/api/user', { headers: { Authorization: `Bearer ${await getToken()}` } })
             if (data.success) {
-                setIsOwner(data.role === "hotelOwner");
+                let ownerStatus = data.role === "hotelOwner";
+
+                if (!ownerStatus) {
+                    ownerStatus = await checkOwnerStatus();
+                }
+
+                setIsOwner(ownerStatus);
                 setSearchedCities(data.recentSearchedCities || [])
             } else {
                 // Retry Fetching User Details after 5 seconds
@@ -49,7 +68,7 @@ export const AppProvider = ({ children }) => {
         } finally {
             setIsOwnerLoading(false);
         }
-    }, [getToken])
+    }, [checkOwnerStatus, getToken])
 
     const fetchRooms = async () => {
         try {

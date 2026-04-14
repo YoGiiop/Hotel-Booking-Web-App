@@ -9,9 +9,22 @@ export const getUserData = async (req, res) => {
     const role = ownedHotel ? "hotelOwner" : req.user?.role || "user";
     const recentSearchedCities = req.user?.recentSearchedCities || [];
 
+    console.log("[getUserData] owner resolution", {
+      userId: req.user?._id,
+      dbUserRole: req.user?.role,
+      hasOwnedHotel: Boolean(ownedHotel),
+      resolvedRole: role,
+      recentSearchedCitiesCount: recentSearchedCities.length,
+    });
+
     if (ownedHotel && req.user?.role !== "hotelOwner" && req.user?._id) {
       req.user.role = "hotelOwner";
       await req.user.save();
+
+      console.log("[getUserData] repaired user role", {
+        userId: req.user?._id,
+        savedRole: req.user?.role,
+      });
     }
 
     res.json({ success: true, role, recentSearchedCities });
