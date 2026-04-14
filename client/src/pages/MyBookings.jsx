@@ -56,15 +56,19 @@ const MyBookings = () => {
                 {bookings.map((booking) => (
                     <div key={booking._id} className="grid grid-cols-1 md:grid-cols-[3fr_2fr_1fr] w-full border-b border-gray-300 py-6 first:border-t">
                         <div className="flex flex-col md:flex-row">
-                            <img className="min-md:w-44 rounded shadow object-cover" src={booking.room.images[0]} alt="hotel-img" />
+                            <img
+                                className="min-md:w-44 rounded shadow object-cover"
+                                src={booking.room?.images && booking.room.images.length > 0 ? booking.room.images[0] : assets.defaultHotelImg}
+                                alt="hotel-img"
+                            />
                             <div className="flex flex-col gap-1.5 max-md:mt-3 min-md:ml-4">
                                 <p className="font-playfair text-2xl">
-                                    {booking.hotel.name}
-                                    <span className="font-inter text-sm"> ({booking.room.roomType})</span>
+                                    {booking.hotel?.name || 'Unknown Hotel'}
+                                    <span className="font-inter text-sm"> ({booking.room?.roomType || 'N/A'})</span>
                                 </p>
                                 <div className="flex items-center gap-1 text-sm text-gray-500">
                                     <img src={assets.locationIcon} alt="location-icon" />
-                                    <span>{booking.hotel.address}</span>
+                                    <span>{booking.hotel?.address || 'Unknown Address'}</span>
                                 </div>
                                 <div className="flex items-center gap-1 text-sm text-gray-500">
                                     <img src={assets.guestsIcon} alt="guests-icon" />
