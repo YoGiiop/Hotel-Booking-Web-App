@@ -34,7 +34,10 @@ export const AppProvider = ({ children }) => {
         try {
             if (!user?.id) return false;
 
-            const { data } = await axios.get('/api/hotels');
+            const token = await getToken();
+            const { data } = await axios.get('/api/hotels', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
             const ownerStatus = Boolean(data?.hotels?.some((hotel) => hotel.owner === user.id));
 
             console.log('[AppContext] checkOwnerFromHotels response', {
@@ -48,7 +51,7 @@ export const AppProvider = ({ children }) => {
             console.log('[AppContext] checkOwnerFromHotels error', error?.response?.data || error.message);
             return false;
         }
-    }, [user]);
+    }, [getToken, user]);
 
     const checkOwnerStatus = useCallback(async () => {
         try {
