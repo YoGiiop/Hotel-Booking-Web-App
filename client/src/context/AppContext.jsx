@@ -30,6 +30,29 @@ export const AppProvider = ({ children }) => {
         "Pool Access": assets.poolIcon,
     };
 
+    const checkOwnerFromDebug = useCallback(async () => {
+        try {
+            const token = await getToken();
+            const { data } = await axios.get('/api/user/debug-owner', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            const ownerStatus = Boolean(data?.success && data?.ownedHotelsCount > 0);
+
+            console.log('[AppContext] checkOwnerFromDebug response', {
+                authUserId: data?.authUserId,
+                ownedHotelsCount: data?.ownedHotelsCount,
+                dbUserRole: data?.dbUser?.role,
+                ownerStatus,
+            });
+
+            return ownerStatus;
+        } catch (error) {
+            console.log('[AppContext] checkOwnerFromDebug error', error?.response?.data || error.message);
+            return false;
+        }
+    }, [getToken]);
+
     const checkOwnerFromHotels = useCallback(async () => {
         try {
             if (!user?.id) return false;
@@ -55,6 +78,11 @@ export const AppProvider = ({ children }) => {
 
     const checkOwnerStatus = useCallback(async () => {
         try {
+            const ownerFromDebug = await checkOwnerFromDebug();
+            if (ownerFromDebug) {
+                return true;
+            }
+
             const ownerFromHotels = await checkOwnerFromHotels();
             if (ownerFromHotels) {
                 return true;
@@ -72,7 +100,7 @@ export const AppProvider = ({ children }) => {
             console.log('[AppContext] checkOwnerStatus error', error?.response?.data || error.message);
             return false;
         }
-    }, [checkOwnerFromHotels, getToken]);
+    }, [checkOwnerFromDebug, checkOwnerFromHotels, getToken]);
 
     const refreshOwnerStatus = useCallback(async () => {
         try {
