@@ -55,6 +55,7 @@ const AllRooms = () => {
         "Price High to Low",
         "Newest First"
     ];
+    const destinationQuery = searchParams.get('destination')?.trim() || '';
 
 
     // Handle changes for filters and sorting
@@ -103,17 +104,24 @@ const AllRooms = () => {
 
     // Filter Destination
     const filterDestination = (room) => {
-        const destination = searchParams.get('destination');
-        if (!destination) return true;
+        if (!destinationQuery) return true;
         const roomCity = room.hotel?.city;
         if (!roomCity) return false;
-        return roomCity.toLowerCase().includes(destination.toLowerCase());
+        return roomCity.toLowerCase().includes(destinationQuery.toLowerCase());
     }
 
     // Filter and sort rooms based on the selected filters and sort option
     const filteredRooms = rooms
         .filter(room => matchesRoomType(room) && matchesPriceRange(room) && filterDestination(room))
         .sort(sortRooms);
+
+    const hasActiveFilters = selectedFilters.roomType.length > 0 || selectedFilters.priceRange.length > 0 || selectedSort;
+    const emptyStateTitle = destinationQuery
+        ? `Hotels are not available in ${destinationQuery} right now.`
+        : 'No hotel rooms match your filters.';
+    const emptyStateMessage = destinationQuery
+        ? 'Try another destination or clear the filters to explore more stays.'
+        : 'Adjust your filters or clear them to see more hotel rooms.';
 
     // Clear all filters
     const clearFilters = () => {
@@ -134,7 +142,7 @@ const AllRooms = () => {
                     <p className='text-sm md:text-base text-gray-500/90 mt-2 max-w-174'>Take advantage of our limited-time offers and special packages to enhance your stay and create unforgettable memories.</p>
                 </div>
 
-                {filteredRooms.map((room) => (
+                {filteredRooms.length > 0 ? filteredRooms.map((room) => (
                     <div key={room._id} className='flex flex-col md:flex-row items-start py-10 gap-6 border-b border-gray-300 last:pb-30 last:border-0'>
                         {/* Room Image */}
                         <img
@@ -174,7 +182,17 @@ const AllRooms = () => {
                             <p className='text-xl font-medium text-gray-700'>${room.pricePerNight} /night</p>
                         </div>
                     </div>
-                ))}
+                )) : (
+                    <div className='mt-10 rounded-2xl border border-gray-200 bg-gray-50 px-6 py-10 text-center text-gray-600'>
+                        <p className='font-playfair text-3xl text-gray-800'>{emptyStateTitle}</p>
+                        <p className='mt-3 text-sm md:text-base'>{emptyStateMessage}</p>
+                        {(destinationQuery || hasActiveFilters) && (
+                            <button onClick={clearFilters} className='mt-6 rounded-md bg-black px-5 py-2 text-white cursor-pointer'>
+                                Clear Search
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Filters */}

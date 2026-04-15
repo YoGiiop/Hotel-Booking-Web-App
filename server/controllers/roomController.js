@@ -1,6 +1,66 @@
 import Hotel from "../models/Hotel.js";
 import Room from "../models/Room.js";
+import Booking from "../models/Booking.js";
 import { v2 as cloudinary } from "cloudinary";
+
+const parseArrayField = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  return JSON.parse(value);
+};
+
+const getCloudinaryPublicIdFromUrl = (url) => {
+  if (!url) return null;
+
+  try {
+    const pathname = new URL(url).pathname;
+    const uploadIndex = pathname.indexOf("/upload/");
+
+    if (uploadIndex === -1) return null;
+
+    const assetPath = pathname.slice(uploadIndex + "/upload/".length);
+    const normalizedPath = assetPath.replace(/^v\d+\//, "");
+    const extensionIndex = normalizedPath.lastIndexOf(".");
+
+    return extensionIndex === -1
+      ? normalizedPath
+      : normalizedPath.slice(0, extensionIndex);
+  } catch {
+    return null;
+  }
+};
+
+const deleteCloudinaryImages = async (imageUrls = []) => {
+  const publicIds = imageUrls
+    .map(getCloudinaryPublicIdFromUrl)
+    .filter(Boolean);
+
+  if (publicIds.length === 0) return;
+
+  await Promise.allSettled(
+    publicIds.map((publicId) => cloudinary.uploader.destroy(publicId))
+  );
+};
+
+const getOwnerHotelAndRoom = async (userId, roomId) => {
+  const hotelData = await Hotel.findOne({ owner: userId });
+
+  if (!hotelData) {
+    return { error: { success: false, message: "No Hotel found" } };
+  }
+
+  const roomData = await Room.findById(roomId);
+
+  if (!roomData) {
+    return { error: { success: false, message: "Room not found" } };
+  }
+
+  if (roomData.hotel !== hotelData._id.toString()) {
+    return { error: { success: false, message: "Forbidden" }, status: 403 };
+  }
+
+  return { hotelData, roomData };
+};
 
 // API to create a new room for a hotel
 // POST /api/rooms
@@ -50,7 +110,15 @@ export const getRooms = async (req, res) => {
           select: 'image',
         },
       }).sort({ createdAt: -1 });
-    res.json({ success: true, rooms });
+
+    const validRooms = rooms.filter((room) => room.hotel);
+    const orphanRoomIds = rooms.filter((room) => !room.hotel).map((room) => room._id);
+
+    if (orphanRoomIds.length > 0) {
+      await Room.deleteMany({ _id: { $in: orphanRoomIds } });
+    }
+
+    res.json({ success: true, rooms: validRooms });
   } catch (error) {
     res.json({ success: false, message: error.message });
   }
@@ -64,7 +132,14 @@ export const getRoomById = async (req, res) => {
       path: 'hotel',
       populate: { path: 'owner', select: 'image' },
     });
+
     if (!room) return res.json({ success: false, message: "Room not found" });
+
+    if (!room.hotel) {
+      await Room.findByIdAndDelete(req.params.id);
+      return res.json({ success: false, message: "Room not found" });
+    }
+
     res.json({ success: true, room });
   } catch (error) {
     res.json({ success: false, message: error.message });
@@ -93,20 +168,87 @@ export const getOwnerRooms = async (req, res) => {
 export const toggleRoomAvailability = async (req, res) => {
   try {
     const { roomId } = req.body;
-    const hotelData = await Hotel.findOne({ owner: req.user._id });
-    if (!hotelData) {
-      return res.json({ success: false, message: "No Hotel found" });
+    const { error, status, roomData } = await getOwnerHotelAndRoom(req.user._id, roomId);
+
+    if (error) {
+      return status
+        ? res.status(status).json(error)
+        : res.json(error);
     }
-    const roomData = await Room.findById(roomId);
-    if (!roomData) {
-      return res.json({ success: false, message: "Room not found" });
-    }
-    if (roomData.hotel !== hotelData._id.toString()) {
-      return res.status(403).json({ success: false, message: "Forbidden" });
-    }
+
     roomData.isAvailable = !roomData.isAvailable;
     await roomData.save();
     res.json({ success: true, message: "Room availability Updated" });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// API to update a room
+// PUT /api/rooms/:id
+export const updateRoom = async (req, res) => {
+  try {
+    const { roomType, pricePerNight, amenities, existingImages } = req.body;
+    const { error, status, roomData } = await getOwnerHotelAndRoom(req.user._id, req.params.id);
+
+    if (error) {
+      return status
+        ? res.status(status).json(error)
+        : res.json(error);
+    }
+
+    if (!roomType || !pricePerNight) {
+      return res.json({ success: false, message: "Room type and price are required" });
+    }
+
+    const parsedAmenities = parseArrayField(amenities);
+    const retainedImages = parseArrayField(existingImages);
+
+    const uploadedImages = req.files && req.files.length > 0
+      ? await Promise.all(req.files.map(async (file) => {
+          const response = await cloudinary.uploader.upload(file.path);
+          return response.secure_url;
+        }))
+      : [];
+
+    const nextImages = [...retainedImages, ...uploadedImages];
+    const removedImages = (roomData.images || []).filter((imageUrl) => !retainedImages.includes(imageUrl));
+
+    if (nextImages.length === 0) {
+      return res.json({ success: false, message: "At least one room image is required" });
+    }
+
+    roomData.roomType = roomType;
+    roomData.pricePerNight = +pricePerNight;
+    roomData.amenities = parsedAmenities;
+    roomData.images = nextImages;
+
+    await roomData.save();
+    await deleteCloudinaryImages(removedImages);
+
+    res.json({ success: true, message: "Room updated successfully", room: roomData });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// API to delete a room
+// DELETE /api/rooms/:id
+export const deleteRoom = async (req, res) => {
+  try {
+    const { error, status, roomData } = await getOwnerHotelAndRoom(req.user._id, req.params.id);
+
+    if (error) {
+      return status
+        ? res.status(status).json(error)
+        : res.json(error);
+    }
+
+    await Booking.deleteMany({ room: roomData._id.toString() });
+    await deleteCloudinaryImages(roomData.images || []);
+    await Room.findByIdAndDelete(roomData._id);
+
+    res.json({ success: true, message: "Room deleted successfully" });
   } catch (error) {
     res.json({ success: false, message: error.message });
   }

@@ -1,19 +1,39 @@
 import { useEffect } from "react";
-import {  useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
+import toast from "react-hot-toast";
 
 const Loader = () => {
-  const { navigate } = useAppContext();
+  const { navigate, axios, getToken } = useAppContext();
 
   const { nextUrl } = useParams();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    if (nextUrl) {
-      setTimeout(() => {
-        navigate(`/${nextUrl}`);
-      }, 8000);
-    }
-  }, [nextUrl, navigate]);
+    const verifyAndRedirect = async () => {
+      if (!nextUrl) return;
+
+      const sessionId = searchParams.get('session_id');
+
+      if (sessionId) {
+        try {
+          const { data } = await axios.get(`/api/bookings/verify-stripe-payment?sessionId=${encodeURIComponent(sessionId)}`, {
+            headers: { Authorization: `Bearer ${await getToken()}` }
+          });
+
+          if (!data.success) {
+            toast.error(data.message || 'Payment verification failed');
+          }
+        } catch (error) {
+          toast.error(error.message);
+        }
+      }
+
+      navigate(`/${nextUrl}`);
+    };
+
+    verifyAndRedirect();
+  }, [axios, getToken, navigate, nextUrl, searchParams]);
 
   return (
     <div className="flex justify-center items-center h-screen">

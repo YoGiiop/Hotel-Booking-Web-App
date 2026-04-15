@@ -2,14 +2,17 @@ import { useCallback, useEffect, useState } from 'react'
 import { assets } from '../../assets/assets'
 import Title from '../../components/Title';
 import { useAppContext } from '../../context/AppContext';
+import toast from 'react-hot-toast';
 
 const Dashboard = () => {
 
-    const { currency, user, getToken, toast, axios } = useAppContext();
+    const { currency, user, getToken, axios, fetchUser, fetchRooms, navigate, ownerDashboardRefreshKey } = useAppContext();
+    const [isDeletingHotel, setIsDeletingHotel] = useState(false);
 
     const [dashboardData, setDashboardData] = useState({
         bookings: [],
         totalBookings: 0,
+        totalRooms: 0,
         totalRevenue: 0,
     });
 
@@ -30,17 +33,48 @@ const Dashboard = () => {
         if (user) {
             fetchDashboardData();
         }
-    }, [user, fetchDashboardData]);
+    }, [user, fetchDashboardData, ownerDashboardRefreshKey]);
+
+    const deleteHotel = async () => {
+        const confirmed = window.confirm('Delete your hotel? This will also delete all rooms and related bookings.');
+        if (!confirmed) return;
+
+        try {
+            setIsDeletingHotel(true);
+            const { data } = await axios.delete('/api/hotels/owner', { headers: { Authorization: `Bearer ${await getToken()}` } });
+
+            if (data.success) {
+                toast.success(data.message);
+                await fetchUser();
+                await fetchRooms();
+                navigate('/');
+            } else {
+                toast.error(data.message);
+            }
+        } catch (error) {
+            toast.error(error.message);
+        } finally {
+            setIsDeletingHotel(false);
+        }
+    }
 
     return (
         <div>
             <Title align='left' font='outfit' title='Dashboard' subTitle='Monitor your room listings, track bookings and analyze revenue—all in one place. Stay updated with real-time insights to ensure smooth operations.' />
-            <div className='flex gap-4 my-8'>
+            <div className='flex flex-wrap items-start justify-between gap-4 my-8'>
+                <div className='flex gap-4 flex-wrap'>
                 <div className='bg-primary/3 border border-primary/10 rounded flex p-4 pr-8'>
                     <img className='max-sm:hidden h-10' src={assets.totalBookingIcon} alt="" />
                     <div className='flex flex-col sm:ml-4 font-medium'>
                         <p className='text-blue-500 text-lg'>Total Bookings</p>
                         <p className='text-neutral-400 text-base'>{ dashboardData.totalBookings }</p>
+                    </div>
+                </div>
+                <div className='bg-primary/3 border border-primary/10 rounded flex p-4 pr-8'>
+                    <img className='max-sm:hidden h-10' src={assets.listIcon} alt="" />
+                    <div className='flex flex-col sm:ml-4 font-medium'>
+                        <p className='text-blue-500 text-lg'>Total Rooms</p>
+                        <p className='text-neutral-400 text-base'>{ dashboardData.totalRooms }</p>
                     </div>
                 </div>
                 <div className='bg-primary/3 border border-primary/10 rounded flex p-4 pr-8'>
@@ -50,6 +84,10 @@ const Dashboard = () => {
                         <p className='text-neutral-400 text-base'>{currency} { dashboardData.totalRevenue }</p>
                     </div>
                 </div>
+                </div>
+                <button onClick={deleteHotel} disabled={isDeletingHotel} className='rounded border border-red-200 px-5 py-3 text-red-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60'>
+                    {isDeletingHotel ? 'Deleting Hotel...' : 'Delete Hotel'}
+                </button>
             </div>
 
             <h2 className='text-xl text-blue-950/70 font-medium mb-5'>Recent Bookings</h2>

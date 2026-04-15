@@ -1,7 +1,42 @@
 import Hotel from "../models/Hotel.js";
+import Room from "../models/Room.js";
+import Booking from "../models/Booking.js";
 import User from "../models/User.js";
 import { v2 as cloudinary } from "cloudinary";
 import connectCloudinary from "../configs/cloudinary.js";
+
+const getCloudinaryPublicIdFromUrl = (url) => {
+  if (!url) return null;
+
+  try {
+    const pathname = new URL(url).pathname;
+    const uploadIndex = pathname.indexOf("/upload/");
+
+    if (uploadIndex === -1) return null;
+
+    const assetPath = pathname.slice(uploadIndex + "/upload/".length);
+    const normalizedPath = assetPath.replace(/^v\d+\//, "");
+    const extensionIndex = normalizedPath.lastIndexOf(".");
+
+    return extensionIndex === -1
+      ? normalizedPath
+      : normalizedPath.slice(0, extensionIndex);
+  } catch {
+    return null;
+  }
+};
+
+const deleteCloudinaryImages = async (imageUrls = []) => {
+  const publicIds = imageUrls
+    .map(getCloudinaryPublicIdFromUrl)
+    .filter(Boolean);
+
+  if (publicIds.length === 0) return;
+
+  await Promise.allSettled(
+    publicIds.map((publicId) => cloudinary.uploader.destroy(publicId))
+  );
+};
 
 export const registerHotel = async (req, res) => {
   try {
@@ -80,5 +115,42 @@ export const getHotels = async (req, res) => {
       success: false,
       message: error.message
     });
+  }
+};
+
+export const deleteOwnerHotel = async (req, res) => {
+  try {
+    await connectCloudinary();
+
+    const hotel = await Hotel.findOne({ owner: req.user._id });
+
+    if (!hotel) {
+      return res.json({ success: false, message: "No Hotel found" });
+    }
+
+    const rooms = await Room.find({ hotel: hotel._id.toString() });
+    const roomIds = rooms.map((room) => room._id.toString());
+    const hotelImages = hotel.images || [];
+    const roomImages = rooms.flatMap((room) => room.images || []);
+
+    await Booking.deleteMany({
+      $or: [
+        { hotel: hotel._id.toString() },
+        { room: { $in: roomIds } }
+      ]
+    });
+    await Room.deleteMany({ hotel: hotel._id.toString() });
+    await Hotel.findByIdAndDelete(hotel._id);
+    await User.findByIdAndUpdate(req.user._id, { role: "user" });
+
+    if (req.user) {
+      req.user.role = "user";
+    }
+
+    await deleteCloudinaryImages([...hotelImages, ...roomImages]);
+
+    res.json({ success: true, message: "Hotel deleted successfully" });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
   }
 };

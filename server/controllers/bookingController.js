@@ -2,7 +2,14 @@ import transporter from "../configs/nodemailer.js";
 import Booking from "../models/Booking.js";
 import Hotel from "../models/Hotel.js";
 import Room from "../models/Room.js";
+import User from "../models/User.js";
 import stripe from "stripe";
+
+const isDeliverableEmail = (email = "") => {
+  if (!email) return false;
+  if (email.endsWith("@placeholder.local")) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};
 
 const normalizeDate = (value) => {
   const date = new Date(value);
@@ -12,16 +19,67 @@ const normalizeDate = (value) => {
   return date;
 };
 
+const getClerkUserProfile = async (userId) => {
+  if (!userId || !process.env.CLERK_SECRET_KEY) return null;
+
+  try {
+    const response = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    const email = data?.email_addresses?.find((item) => item.id === data.primary_email_address_id)?.email_address
+      || data?.email_addresses?.[0]?.email_address
+      || null;
+    const username = [data?.first_name, data?.last_name].filter(Boolean).join(" ") || data?.username || null;
+
+    return { email, username };
+  } catch {
+    return null;
+  }
+};
+
+const resolveBookingEmailUser = async (user) => {
+  if (!user?._id) return user;
+  if (isDeliverableEmail(user.email)) return user;
+
+  const clerkProfile = await getClerkUserProfile(user._id);
+
+  if (!isDeliverableEmail(clerkProfile?.email)) {
+    return user;
+  }
+
+  const updates = { email: clerkProfile.email };
+
+  if (clerkProfile.username && (!user.username || user.username === "User")) {
+    updates.username = clerkProfile.username;
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(user._id, updates, { new: true });
+  return updatedUser || { ...user, ...updates };
+};
+
 const sendBookingConfirmationEmail = async ({ user, booking, roomData }) => {
-  if (!user?.email) return;
+  const recipientUser = await resolveBookingEmailUser(user);
+
+  if (!isDeliverableEmail(recipientUser?.email)) {
+    return;
+  }
 
   const mailOptions = {
-    from: process.env.SENDER_EMAIL,
-    to: user.email,
+    from: process.env.SENDER_EMAIL || process.env.GMAIL_USER,
+    to: recipientUser.email,
     subject: "Hotel Booking Details",
     html: `
       <h2>Your Booking Details</h2>
-      <p>Dear ${user.username},</p>
+      <p>Dear ${recipientUser.username || "User"},</p>
       <p>Thank you for your booking! Here are your details:</p>
       <ul>
         <li><strong>Booking ID:</strong> ${booking.id}</li>
@@ -182,13 +240,14 @@ export const getHotelBookings = async (req, res) => {
     if (!hotel) {
       return res.json({ success: false, message: "No Hotel found" });
     }
+    const totalRooms = await Room.countDocuments({ hotel: hotel._id.toString() });
     const bookings = await Booking.find({ hotel: hotel._id }).populate("room hotel user").sort({ createdAt: -1 });
     // Total Bookings
     const totalBookings = bookings.length;
     // Total Revenue
     const totalRevenue = bookings.reduce((acc, booking) => acc + booking.totalPrice, 0);
 
-    res.json({ success: true, dashboardData: { totalBookings, totalRevenue, bookings } });
+    res.json({ success: true, dashboardData: { totalBookings, totalRooms, totalRevenue, bookings } });
   } catch (error) {
     res.json({ success: false, message: "Failed to fetch bookings" });
   }
@@ -242,7 +301,7 @@ export const stripePayment = async (req, res) => {
     const session = await stripeInstance.checkout.sessions.create({
       line_items,
       mode: "payment",
-      success_url: `${origin}/loader/my-bookings`,
+      success_url: `${origin}/loader/my-bookings?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/my-bookings`,
       metadata: {
         bookingId: bookingId.toString(),
@@ -252,5 +311,48 @@ export const stripePayment = async (req, res) => {
 
   } catch (error) {
     res.json({ success: false, message: "Payment Failed" });
+  }
+}
+
+export const verifyStripePayment = async (req, res) => {
+  try {
+    const { sessionId } = req.query;
+
+    if (!sessionId) {
+      return res.json({ success: false, message: "Session ID is required" });
+    }
+
+    const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY);
+    const session = await stripeInstance.checkout.sessions.retrieve(sessionId);
+    const bookingId = session?.metadata?.bookingId;
+
+    if (!bookingId) {
+      return res.json({ success: false, message: "Booking not found for this payment" });
+    }
+
+    const booking = await Booking.findById(bookingId);
+
+    if (!booking) {
+      return res.json({ success: false, message: "Booking not found" });
+    }
+
+    if (booking.user !== req.user._id) {
+      return res.status(403).json({ success: false, message: "Forbidden" });
+    }
+
+    if (session.payment_status === "paid") {
+      booking.isPaid = true;
+      booking.paymentMethod = "Stripe";
+      if (booking.status === "pending") {
+        booking.status = "confirmed";
+      }
+      await booking.save();
+
+      return res.json({ success: true, isPaid: true });
+    }
+
+    res.json({ success: true, isPaid: false, message: "Payment is not completed yet" });
+  } catch (error) {
+    res.json({ success: false, message: error.message || "Payment verification failed" });
   }
 }

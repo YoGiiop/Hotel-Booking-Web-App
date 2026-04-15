@@ -21,6 +21,7 @@ export const AppProvider = ({ children }) => {
     const [showHotelReg, setShowHotelReg] = useState(false);
     const [rooms, setRooms] = useState([]);
     const [searchedCities, setSearchedCities] = useState([]); // max 3 recent searched cities
+    const [ownerDashboardRefreshKey, setOwnerDashboardRefreshKey] = useState(0);
 
     const facilityIcons = {
         "Free WiFi": assets.freeWifiIcon,
@@ -84,7 +85,7 @@ export const AppProvider = ({ children }) => {
             setSearchedCities(data?.recentSearchedCities || []);
 
             return ownerStatus;
-        } catch (error) {
+        } catch {
             setIsOwner(false);
             return false;
         } finally {
@@ -119,7 +120,7 @@ export const AppProvider = ({ children }) => {
         } finally {
             setIsOwnerLoading(false);
         }
-    }, [checkOwnerStatus, getToken, user])
+    }, [checkOwnerStatus, getToken])
 
     const fetchRooms = async () => {
         try {
@@ -134,6 +135,10 @@ export const AppProvider = ({ children }) => {
             toast.error(error.message)
         }
     }
+
+    const refreshOwnerDashboard = useCallback(() => {
+        setOwnerDashboardRefreshKey((prev) => prev + 1)
+    }, [])
 
     useEffect(() => {
         if (!isLoaded) return;
@@ -162,7 +167,10 @@ export const AppProvider = ({ children }) => {
         facilityIcons,
         rooms, setRooms,
         searchedCities, setSearchedCities,
-        fetchUser // Expose fetchUser for use in components
+        fetchUser,
+        fetchRooms,
+        ownerDashboardRefreshKey,
+        refreshOwnerDashboard
     };
 
     return (

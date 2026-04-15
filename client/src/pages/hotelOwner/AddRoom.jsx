@@ -6,7 +6,7 @@ import { useAppContext } from '../../context/AppContext'
 
 const AddRoom = () => {
 
-    const { axios, getToken } = useAppContext()
+    const { axios, getToken, fetchRooms, navigate, refreshOwnerDashboard } = useAppContext()
 
     const [images, setImages] = useState({ 1: null, 2: null, 3: null, 4: null })
     const [loading, setLoading] = useState(false);
@@ -48,6 +48,8 @@ const AddRoom = () => {
 
             if (data.success) {
                 toast.success(data.message)
+                await fetchRooms()
+                refreshOwnerDashboard()
                 setInputs({
                     roomType: '',
                     pricePerNight: 0,
@@ -60,6 +62,7 @@ const AddRoom = () => {
                     }
                 })
                 setImages({ 1: null, 2: null, 3: null, 4: null })
+                navigate('/owner/list-room')
             } else {
                 toast.error(data.message)
             }

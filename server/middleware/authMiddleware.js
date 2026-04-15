@@ -1,5 +1,15 @@
 import User from "../models/User.js";
 
+const getPrimaryEmailFromClaims = (claims = {}) => {
+  return claims.email
+    || claims.email_address
+    || claims.primaryEmailAddress?.emailAddress
+    || claims.primary_email_address?.email_address
+    || null;
+};
+
+const isPlaceholderEmail = (email = "") => email.endsWith("@placeholder.local");
+
 export const protect = async (req, res, next) => {
   let authData;
   let userId;
@@ -16,7 +26,8 @@ export const protect = async (req, res, next) => {
 
   try {
     const claims = authData?.sessionClaims || {};
-    const fallbackEmail = claims.email || `${userId}@placeholder.local`;
+    const claimEmail = getPrimaryEmailFromClaims(claims);
+    const fallbackEmail = claimEmail || `${userId}@placeholder.local`;
     const fallbackName = claims.fullName || claims.username || "User";
     const fallbackUser = {
       _id: userId,
@@ -41,6 +52,22 @@ export const protect = async (req, res, next) => {
       );
       // Always fetch the latest user (in case it was updated elsewhere)
       user = await User.findById(userId);
+
+      if (user) {
+        const updates = {};
+
+        if (claimEmail && (isPlaceholderEmail(user.email) || !user.email)) {
+          updates.email = claimEmail;
+        }
+
+        if (fallbackName && (!user.username || user.username === "User")) {
+          updates.username = fallbackName;
+        }
+
+        if (Object.keys(updates).length > 0) {
+          user = await User.findByIdAndUpdate(userId, updates, { new: true });
+        }
+      }
     } catch {
       user = fallbackUser;
     }

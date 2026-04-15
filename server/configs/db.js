@@ -12,4 +12,3 @@ const connectDB = async () => {
 };
 
 export default connectDB;
-// Note: Do not use the '@' symbol in your database user's password.

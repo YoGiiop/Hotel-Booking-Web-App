@@ -33,12 +33,16 @@ const clerkWebhooks = async (req, res) => {
     // Switch Cases for differernt Events
     switch (type) {
       case "user.created": {
-        await User.create(userData);
+        await User.findByIdAndUpdate(
+          data.id,
+          userData,
+          { new: true, upsert: true, setDefaultsOnInsert: true }
+        );
         break;
       }
 
       case "user.updated": {
-        await User.findByIdAndUpdate(data.id, userData);
+        await User.findByIdAndUpdate(data.id, userData, { new: true, upsert: true });
         break;
       }
 

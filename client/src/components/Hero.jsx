@@ -4,19 +4,25 @@ import { useAppContext } from '../context/AppContext';
 
 const Hero = () => {
 
-    const { navigate, getToken, axios, setSearchedCities } = useAppContext();
+    const { navigate, getToken, axios, setSearchedCities, user } = useAppContext();
     const [destination, setDestination] = useState("");
 
     const onSearch = async (e) => {
         e.preventDefault();
-        navigate(`/rooms?destination=${destination}`);
+        const trimmedDestination = destination.trim();
+        if (!trimmedDestination) return;
+
+        navigate(`/rooms?destination=${encodeURIComponent(trimmedDestination)}`);
+
+        if (!user) return;
+
         // call api to save recent searched city
-        await axios.post('/api/user/store-recent-search', { recentSearchedCity: destination }, {
+        await axios.post('/api/user/store-recent-search', { recentSearchedCity: trimmedDestination }, {
             headers: { Authorization: `Bearer ${await getToken()}` }
         });
         // add destination to searchedCities max 3 recent searched cities
         setSearchedCities((prevSearchedCities) => {
-            const updatedSearchedCities = [...prevSearchedCities, destination];
+            const updatedSearchedCities = [...prevSearchedCities, trimmedDestination];
             if (updatedSearchedCities.length > 3) {
                 updatedSearchedCities.shift();
             }
