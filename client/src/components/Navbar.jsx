@@ -24,13 +24,12 @@ const Navbar = () => {
     const location = useLocation();
 
     const { openSignIn } = useClerk()
-    const { user, setShowHotelReg, isOwner, isOwnerLoading, navigate, refreshOwnerStatus } = useAppContext()
+    const { user, setShowHotelReg, isOwner, navigate, refreshOwnerStatus } = useAppContext()
 
     const handleOwnerClick = async () => {
         if (!user) return;
 
         const ownerStatus = isOwner ? true : await refreshOwnerStatus();
-        console.log('[Navbar] owner click result', { isOwner, ownerStatus, isOwnerLoading });
 
         if (ownerStatus) {
             navigate('/owner');
@@ -72,7 +71,7 @@ const Navbar = () => {
                 {
                     user && (
                         <button className={`border px-4 py-1 text-sm font-light rounded-full cursor-pointer ${isScrolled ? 'text-black' : 'text-white'} transition-all`} onClick={handleOwnerClick}>
-                            {isOwnerLoading ? 'Checking...' : isOwner ? 'Dashboard' : 'List Your Hotel'}
+                            {isOwner ? 'Dashboard' : 'List Your Hotel'}
                         </button>
                     )
                 }
@@ -116,7 +115,7 @@ const Navbar = () => {
                             My Bookings
                         </NavLink>
                         <button className="border px-4 py-1 text-sm font-light rounded-full cursor-pointer transition-all" onClick={handleOwnerClick}>
-                            {isOwnerLoading ? 'Checking...' : isOwner ? 'Dashboard' : 'List Your Hotel'}
+                            {isOwner ? 'Dashboard' : 'List Your Hotel'}
                         </button>
                     </>
                 )}

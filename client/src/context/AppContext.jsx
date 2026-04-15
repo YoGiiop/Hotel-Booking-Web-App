@@ -30,29 +30,6 @@ export const AppProvider = ({ children }) => {
         "Pool Access": assets.poolIcon,
     };
 
-    const checkOwnerFromDebug = useCallback(async () => {
-        try {
-            const token = await getToken();
-            const { data } = await axios.get('/api/user/debug-owner', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            const ownerStatus = Boolean(data?.success && data?.ownedHotelsCount > 0);
-
-            console.log('[AppContext] checkOwnerFromDebug response', {
-                authUserId: data?.authUserId,
-                ownedHotelsCount: data?.ownedHotelsCount,
-                dbUserRole: data?.dbUser?.role,
-                ownerStatus,
-            });
-
-            return ownerStatus;
-        } catch (error) {
-            console.log('[AppContext] checkOwnerFromDebug error', error?.response?.data || error.message);
-            return false;
-        }
-    }, [getToken]);
-
     const checkOwnerFromHotels = useCallback(async () => {
         try {
             if (!user?.id) return false;
@@ -63,26 +40,14 @@ export const AppProvider = ({ children }) => {
             });
             const ownerStatus = Boolean(data?.hotels?.some((hotel) => hotel.owner === user.id));
 
-            console.log('[AppContext] checkOwnerFromHotels response', {
-                clerkUserId: user.id,
-                hotelsCount: data?.hotels?.length || 0,
-                ownerStatus,
-            });
-
             return ownerStatus;
-        } catch (error) {
-            console.log('[AppContext] checkOwnerFromHotels error', error?.response?.data || error.message);
+        } catch {
             return false;
         }
     }, [getToken, user]);
 
     const checkOwnerStatus = useCallback(async () => {
         try {
-            const ownerFromDebug = await checkOwnerFromDebug();
-            if (ownerFromDebug) {
-                return true;
-            }
-
             const ownerFromHotels = await checkOwnerFromHotels();
             if (ownerFromHotels) {
                 return true;
@@ -93,14 +58,11 @@ export const AppProvider = ({ children }) => {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            console.log('[AppContext] checkOwnerStatus response', data);
-
             return Boolean(data?.success);
-        } catch (error) {
-            console.log('[AppContext] checkOwnerStatus error', error?.response?.data || error.message);
+        } catch {
             return false;
         }
-    }, [checkOwnerFromDebug, checkOwnerFromHotels, getToken]);
+    }, [checkOwnerFromHotels, getToken]);
 
     const refreshOwnerStatus = useCallback(async () => {
         try {
@@ -110,9 +72,9 @@ export const AppProvider = ({ children }) => {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            console.log('[AppContext] refreshOwnerStatus /api/user', data);
-
-            let ownerStatus = Boolean(data?.isOwner || data?.ownedHotelsCount > 0 || data?.role === 'hotelOwner');
+            let ownerStatus = typeof data?.isOwner === 'boolean'
+                ? data.isOwner
+                : Boolean(data?.ownedHotelsCount > 0);
 
             if (!ownerStatus) {
                 ownerStatus = await checkOwnerStatus();
@@ -121,11 +83,8 @@ export const AppProvider = ({ children }) => {
             setIsOwner(ownerStatus);
             setSearchedCities(data?.recentSearchedCities || []);
 
-            console.log('[AppContext] refreshOwnerStatus final', { ownerStatus });
-
             return ownerStatus;
         } catch (error) {
-            console.log('[AppContext] refreshOwnerStatus error', error?.response?.data || error.message);
             setIsOwner(false);
             return false;
         } finally {
@@ -138,7 +97,9 @@ export const AppProvider = ({ children }) => {
             setIsOwnerLoading(true);
             const { data } = await axios.get('/api/user', { headers: { Authorization: `Bearer ${await getToken()}` } })
             if (data.success) {
-                let ownerStatus = Boolean(data.isOwner || data.ownedHotelsCount > 0 || data.role === "hotelOwner");
+                let ownerStatus = typeof data?.isOwner === 'boolean'
+                    ? data.isOwner
+                    : Boolean(data?.ownedHotelsCount > 0);
 
                 if (!ownerStatus) {
                     ownerStatus = await checkOwnerStatus();
@@ -146,12 +107,6 @@ export const AppProvider = ({ children }) => {
 
                 setIsOwner(ownerStatus);
                 setSearchedCities(data.recentSearchedCities || [])
-                console.log('[AppContext] fetchUser resolved', {
-                    clerkUserId: user?.id,
-                    apiRole: data.role,
-                    ownerStatus,
-                    recentSearchedCities: data.recentSearchedCities || []
-                });
             } else {
                 // Retry Fetching User Details after 5 seconds
                 // Useful when user creates account using email & password
@@ -160,7 +115,6 @@ export const AppProvider = ({ children }) => {
                 }, 2000);
             }
         } catch (error) {
-            console.log('[AppContext] fetchUser error', error?.response?.data || error.message);
             toast.error(error.message)
         } finally {
             setIsOwnerLoading(false);
