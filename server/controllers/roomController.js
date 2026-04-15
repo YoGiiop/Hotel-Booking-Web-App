@@ -42,20 +42,18 @@ const deleteCloudinaryImages = async (imageUrls = []) => {
   );
 };
 
+const getOwnerHotels = async (userId) => Hotel.find({ owner: userId });
+
 const getOwnerHotelAndRoom = async (userId, roomId) => {
-  const hotelData = await Hotel.findOne({ owner: userId });
-
-  if (!hotelData) {
-    return { error: { success: false, message: "No Hotel found" } };
-  }
-
   const roomData = await Room.findById(roomId);
 
   if (!roomData) {
     return { error: { success: false, message: "Room not found" } };
   }
 
-  if (roomData.hotel !== hotelData._id.toString()) {
+  const hotelData = await Hotel.findOne({ _id: roomData.hotel, owner: userId });
+
+  if (!hotelData) {
     return { error: { success: false, message: "Forbidden" }, status: 403 };
   }
 
@@ -66,9 +64,16 @@ const getOwnerHotelAndRoom = async (userId, roomId) => {
 // POST /api/rooms
 export const createRoom = async (req, res) => {
   try {
-    const { roomType, pricePerNight, amenities } = req.body;
+    const { roomType, pricePerNight, amenities, hotelId } = req.body;
 
-    const hotel = await Hotel.findOne({ owner: req.user._id });
+    const ownerHotels = await getOwnerHotels(req.user._id);
+    let hotel = null;
+
+    if (hotelId) {
+      hotel = ownerHotels.find((item) => item._id.toString() === hotelId);
+    } else if (ownerHotels.length === 1) {
+      [hotel] = ownerHotels;
+    }
 
     if (!hotel) return res.json({ success: false, message: "No Hotel found" });
     if (!req.files || req.files.length === 0) {
@@ -150,11 +155,14 @@ export const getRoomById = async (req, res) => {
 // GET /api/rooms/owner
 export const getOwnerRooms = async (req, res) => {
   try {
-    const hotelData = await Hotel.findOne({ owner: req.user._id });
-    if (!hotelData) {
+    const ownerHotels = await getOwnerHotels(req.user._id);
+    const hotelIds = ownerHotels.map((hotel) => hotel._id.toString());
+
+    if (hotelIds.length === 0) {
       return res.json({ success: false, message: "No Hotel found" });
     }
-    const rooms = await Room.find({ hotel: hotelData._id.toString() }).populate("hotel");
+
+    const rooms = await Room.find({ hotel: { $in: hotelIds } }).populate("hotel").sort({ createdAt: -1 });
     res.json({ success: true, rooms });
   } catch (error) {
     console.log(error);

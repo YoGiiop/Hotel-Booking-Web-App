@@ -45,15 +45,6 @@ export const registerHotel = async (req, res) => {
     // Always use req.user._id to guarantee user exists
     const owner = req.user._id;
 
-    // Check if already registered
-    const existingHotel = await Hotel.findOne({ owner });
-    if (existingHotel) {
-      return res.json({
-        success: false,
-        message: "Hotel Already Registered"
-      });
-    }
-
     // Handle image uploads
     let imageUrls = [];
     if (req.files && req.files.length > 0) {
@@ -101,6 +92,23 @@ export const registerHotel = async (req, res) => {
 };
 
 
+export const getOwnerHotels = async (req, res) => {
+  try {
+    const hotels = await Hotel.find({ owner: req.user._id }).sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      hotels,
+    });
+  } catch (error) {
+    res.json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
 export const getHotels = async (req, res) => {
   try {
     const hotels = await Hotel.find();
@@ -122,7 +130,7 @@ export const deleteOwnerHotel = async (req, res) => {
   try {
     await connectCloudinary();
 
-    const hotel = await Hotel.findOne({ owner: req.user._id });
+    const hotel = await Hotel.findOne({ _id: req.params.id, owner: req.user._id });
 
     if (!hotel) {
       return res.json({ success: false, message: "No Hotel found" });
@@ -141,10 +149,14 @@ export const deleteOwnerHotel = async (req, res) => {
     });
     await Room.deleteMany({ hotel: hotel._id.toString() });
     await Hotel.findByIdAndDelete(hotel._id);
-    await User.findByIdAndUpdate(req.user._id, { role: "user" });
 
-    if (req.user) {
-      req.user.role = "user";
+    const remainingHotels = await Hotel.countDocuments({ owner: req.user._id });
+    if (remainingHotels === 0) {
+      await User.findByIdAndUpdate(req.user._id, { role: "user" });
+
+      if (req.user) {
+        req.user.role = "user";
+      }
     }
 
     await deleteCloudinaryImages([...hotelImages, ...roomImages]);

@@ -121,7 +121,7 @@ const RoomDetails = () => {
     }
 
     return (
-        <div className="py-28 md:py-35 px-4 md:px-16 lg:px-24 xl:px-32">
+        <div className="px-4 py-28 md:px-16 md:py-35 lg:px-24 xl:px-32">
             {/* Room Details */}
             <div className="flex flex-col md:flex-row items-start md:items-center gap-2">
                 <h1 className="text-3xl md:text-4xl font-playfair">
@@ -142,10 +142,10 @@ const RoomDetails = () => {
             </div>
 
             {/* Room Images */}
-            <div className="flex flex-col lg:flex-row mt-6 gap-6">
+            <div className="mt-6 flex flex-col gap-6 lg:flex-row">
                 <div className="lg:w-1/2 w-full">
                     <img
-                        className="w-full rounded-xl shadow-lg object-cover"
+                        className="h-72 w-full rounded-xl object-cover shadow-lg sm:h-96"
                         src={mainImage}
                         alt="Room Image"
                     />
@@ -157,7 +157,7 @@ const RoomDetails = () => {
                             <img
                                 key={index}
                                 onClick={() => setMainImage(image)}
-                                className={`w-full rounded-xl shadow-md object-cover cursor-pointer ${mainImage === image && "outline-3 outline-orange-500"
+                                className={`h-32 w-full rounded-xl object-cover shadow-md cursor-pointer sm:h-44 ${mainImage === image && "outline-3 outline-orange-500"
                                     }`}
                                 src={image}
                                 alt="Room Image"
@@ -167,7 +167,7 @@ const RoomDetails = () => {
             </div>
 
             {/* Room Highlights */}
-            <div className="flex flex-col md:flex-row md:justify-between mt-10">
+            <div className="mt-10 flex flex-col gap-4 md:flex-row md:justify-between">
                 <div className="flex flex-col">
                     <h1 className="text-3xl md:text-4xl font-playfair">
                         Experience Luxury Like Never Before
@@ -191,10 +191,10 @@ const RoomDetails = () => {
             {/* CheckIn CheckOut Form */}
             <form
                 onSubmit={onSubmitHandler}
-                className="flex flex-col md:flex-row items-start md:items-center justify-between bg-white shadow-[0px_0px_20px_rgba(0,0,0,0.15)] p-6 rounded-xl mx-auto mt-16 max-w-6xl"
+                className="mx-auto mt-16 flex max-w-6xl flex-col items-start justify-between rounded-xl bg-white p-4 shadow-[0px_0px_20px_rgba(0,0,0,0.15)] sm:p-6 md:flex-row md:items-center"
             >
-                <div className="flex flex-col flex-wrap md:flex-row items-start md:items-center gap-4 md:gap-10 text-gray-500">
-                    <div className="flex flex-col">
+                <div className="flex w-full flex-col flex-wrap items-start gap-4 text-gray-500 md:flex-row md:items-center md:gap-8 lg:gap-10">
+                    <div className="flex w-full flex-col sm:w-[calc(50%-0.5rem)] md:w-auto">
                         <label htmlFor="checkInDate" className="font-medium">
                             Check-In
                         </label>
@@ -209,7 +209,7 @@ const RoomDetails = () => {
                         />
                     </div>
                     <div className="w-px h-15 bg-gray-300/70 max-md:hidden"></div>
-                    <div className="flex flex-col">
+                    <div className="flex w-full flex-col sm:w-[calc(50%-0.5rem)] md:w-auto">
                         <label htmlFor="checkOutDate" className="font-medium">
                             Check-Out
                         </label>
@@ -225,7 +225,7 @@ const RoomDetails = () => {
                         />
                     </div>
                     <div className="w-px h-15 bg-gray-300/70 max-md:hidden"></div>
-                    <div className="flex flex-col">
+                    <div className="flex w-full flex-col sm:w-32 md:w-auto">
                         <label htmlFor="guests" className="font-medium">
                             Guests
                         </label>
@@ -234,7 +234,7 @@ const RoomDetails = () => {
                             value={guests}
                             id="guests"
                             type="number"
-                            className="max-w-20 rounded border border-gray-300 px-3 py-2 mt-1.5 outline-none"
+                            className="mt-1.5 w-full rounded border border-gray-300 px-3 py-2 outline-none md:max-w-20"
                             placeholder="0"
                             required
                         />
@@ -243,7 +243,7 @@ const RoomDetails = () => {
                 <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="bg-primary hover:bg-primary-dull active:scale-95 transition-all text-white rounded-md max-md:w-full max-md:mt-6 md:px-25 py-3 md:py-4 text-base cursor-pointer"
+                    className="mt-6 w-full rounded-md bg-primary px-6 py-3 text-base text-white transition-all cursor-pointer hover:bg-primary-dull active:scale-95 md:mt-0 md:w-auto md:px-10 md:py-4"
                 >
                     {isSubmitting ? "Booking..." : isAvailable ? "Book Now" : "Check Availability"}
                 </button>
@@ -262,7 +262,7 @@ const RoomDetails = () => {
                 ))}
             </div>
 
-            <div className="max-w-3xl border-y border-gray-300 my-15 py-10 text-gray-500">
+            <div className="my-15 max-w-3xl border-y border-gray-300 py-10 text-gray-500">
                 <p>
                     Guests will be allocated on the ground floor according to
                     availability. You get a comfortable Two bedroom apartment has a true
@@ -275,7 +275,7 @@ const RoomDetails = () => {
             </div>
 
             <div className="flex flex-col items-start gap-4">
-                <div className="flex gap-4">
+                <div className="flex items-start gap-4">
                     <img
                         className="h-14 w-14 md:h-18 md:w-18 rounded-full"
                         src={room?.hotel?.owner?.image || "https://via.placeholder.com/100"} 

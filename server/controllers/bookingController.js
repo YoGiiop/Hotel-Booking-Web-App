@@ -19,6 +19,17 @@ const normalizeDate = (value) => {
   return date;
 };
 
+const getMailFromHeader = () => {
+  const senderAddress = process.env.SENDER_EMAIL || process.env.GMAIL_USER;
+  const senderName = process.env.SENDER_NAME || "QuickStay";
+
+  if (!senderAddress) {
+    return undefined;
+  }
+
+  return `${senderName} <${senderAddress}>`;
+};
+
 const getClerkUserProfile = async (userId) => {
   if (!userId || !process.env.CLERK_SECRET_KEY) return null;
 
@@ -68,14 +79,16 @@ const resolveBookingEmailUser = async (user) => {
 
 const sendBookingConfirmationEmail = async ({ user, booking, roomData }) => {
   const recipientUser = await resolveBookingEmailUser(user);
+  const ownerEmail = roomData?.hotel?.owner?.email;
 
   if (!isDeliverableEmail(recipientUser?.email)) {
     return;
   }
 
   const mailOptions = {
-    from: process.env.SENDER_EMAIL || process.env.GMAIL_USER,
+    from: getMailFromHeader(),
     to: recipientUser.email,
+    ...(isDeliverableEmail(ownerEmail) ? { replyTo: ownerEmail } : {}),
     subject: "Hotel Booking Details",
     html: `
       <h2>Your Booking Details</h2>
@@ -176,7 +189,14 @@ export const createBooking = async (req, res) => {
     }
 
     // Get totalPrice from Room
-    const roomData = await Room.findById(room).populate("hotel");
+    const roomData = await Room.findById(room).populate({
+      path: "hotel",
+      populate: {
+        path: "owner",
+        model: "User",
+        select: "email username",
+      },
+    });
     if (!roomData || !roomData.hotel) {
       return res.json({ success: false, message: "Room not found" });
     }
@@ -236,18 +256,52 @@ export const getUserBookings = async (req, res) => {
 
 export const getHotelBookings = async (req, res) => {
   try {
-    const hotel = await Hotel.findOne({ owner: req.user._id });
-    if (!hotel) {
+    const ownerHotels = await Hotel.find({ owner: req.user._id });
+    const ownerHotelIds = ownerHotels.map((hotel) => hotel._id.toString());
+    const { hotelId, startDate, endDate } = req.query;
+
+    if (ownerHotelIds.length === 0) {
       return res.json({ success: false, message: "No Hotel found" });
     }
-    const totalRooms = await Room.countDocuments({ hotel: hotel._id.toString() });
-    const bookings = await Booking.find({ hotel: hotel._id }).populate("room hotel user").sort({ createdAt: -1 });
+
+    const hotelIds = hotelId && ownerHotelIds.includes(hotelId)
+      ? [hotelId]
+      : ownerHotelIds;
+
+    const bookingQuery = { hotel: { $in: hotelIds } };
+
+    if (startDate || endDate) {
+      bookingQuery.createdAt = {};
+
+      if (startDate) {
+        const normalizedStartDate = normalizeDate(startDate);
+        if (!normalizedStartDate) {
+          return res.json({ success: false, message: "Invalid start date" });
+        }
+        bookingQuery.createdAt.$gte = normalizedStartDate;
+      }
+
+      if (endDate) {
+        const normalizedEndDate = normalizeDate(endDate);
+        if (!normalizedEndDate) {
+          return res.json({ success: false, message: "Invalid end date" });
+        }
+        normalizedEndDate.setHours(23, 59, 59, 999);
+        bookingQuery.createdAt.$lte = normalizedEndDate;
+      }
+    }
+
+    const totalRooms = await Room.countDocuments({ hotel: { $in: hotelIds } });
+    const bookings = await Booking.find(bookingQuery).populate("room hotel user").sort({ createdAt: -1 });
     // Total Bookings
     const totalBookings = bookings.length;
     // Total Revenue
     const totalRevenue = bookings.reduce((acc, booking) => acc + booking.totalPrice, 0);
+    const totalProfit = bookings
+      .filter((booking) => booking.isPaid && booking.status !== "cancelled")
+      .reduce((acc, booking) => acc + booking.totalPrice, 0);
 
-    res.json({ success: true, dashboardData: { totalBookings, totalRooms, totalRevenue, bookings } });
+    res.json({ success: true, dashboardData: { totalBookings, totalRooms, totalRevenue, totalProfit, bookings } });
   } catch (error) {
     res.json({ success: false, message: "Failed to fetch bookings" });
   }

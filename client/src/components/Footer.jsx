@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 
 const Footer = () => {
     return (
-        <div className='bg-[#F6F9FC] text-gray-500/80 pt-8 px-6 md:px-16 lg:px-24 xl:px-32'>
-            <div className='flex flex-wrap justify-between gap-12 md:gap-6'>
+        <div className='bg-[#F6F9FC] px-6 pt-8 text-gray-500/80 md:px-16 lg:px-24 xl:px-32'>
+            <div className='grid gap-10 md:grid-cols-2 xl:grid-cols-[1.3fr_0.7fr_0.7fr_1fr] xl:gap-8'>
                 <div className='max-w-80'>
                     <img src={assets.logo} alt="logo" className='mb-4 h-8 md:h-9 invert opacity-80' />
                     <p className='text-sm'>
@@ -45,8 +45,8 @@ const Footer = () => {
                     <p className='mt-3 text-sm'>
                         Subscribe to our newsletter for travel inspiration and special offers.
                     </p>
-                    <div className='flex items-center mt-4'>
-                        <input type="text" className='bg-white rounded-l border border-gray-300 h-9 px-3 outline-none' placeholder='Your email' />
+                    <div className='mt-4 flex w-full items-center'>
+                        <input type="text" className='h-9 min-w-0 flex-1 rounded-l border border-gray-300 bg-white px-3 outline-none' placeholder='Your email' />
                         <button className='flex items-center justify-center bg-black h-9 w-9 aspect-square rounded-r'>
                             <img src={assets.arrowIcon} alt="arrow-icon" className='w-3.5 invert' />
                         </button>
@@ -54,9 +54,9 @@ const Footer = () => {
                 </div>
             </div>
             <hr className='border-gray-300 mt-8' />
-            <div className='flex flex-col md:flex-row gap-2 items-center justify-between py-5'>
+            <div className='flex flex-col items-center justify-between gap-3 py-5 text-center md:flex-row md:text-left'>
                 <p>© {new Date().getFullYear()} QuickStay. All rights reserved.</p>
-                <ul className='flex items-center gap-4'>
+                <ul className='flex flex-wrap items-center justify-center gap-4'>
                     <li><Link to="#">Privacy</Link></li>
                     <li><Link to="#">Terms</Link></li>
                     <li><Link to="#">Sitemap</Link></li>

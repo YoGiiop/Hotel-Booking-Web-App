@@ -27,7 +27,7 @@ const App = () => {
       <Toaster />
       {!isOwnerPath && <Navbar />}
       {showHotelReg && <HotelReg />}
-      <div className="min-h-[70vh]">
+      <div className={isOwnerPath ? "" : "min-h-[70vh]"}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
@@ -43,7 +43,7 @@ const App = () => {
           </Route>
         </Routes>
       </div>
-      <Footer />
+      {!isOwnerPath && <Footer />}
     </div>
   );
 };
