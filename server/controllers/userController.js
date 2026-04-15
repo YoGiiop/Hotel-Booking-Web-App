@@ -1,5 +1,6 @@
 
 import Hotel from "../models/Hotel.js";
+import User from "../models/User.js";
 
 // Get User data using Token (JWT)
 // GET /api/user/
@@ -20,12 +21,11 @@ export const getUserData = async (req, res) => {
     });
 
     if (isOwner && req.user?.role !== "hotelOwner" && req.user?._id) {
-      req.user.role = "hotelOwner";
-      await req.user.save();
+      await User.findByIdAndUpdate(req.user._id, { role: "hotelOwner" });
 
       console.log("[getUserData] repaired user role", {
         userId: req.user?._id,
-        savedRole: req.user?.role,
+        savedRole: "hotelOwner",
       });
     }
 
@@ -41,7 +41,10 @@ export const getUserData = async (req, res) => {
 export const storeRecentSearchedCities = async (req, res) => {
   try {
     const { recentSearchedCity } = req.body;
-    const user = await req.user;
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.json({ success: false, message: "User not found" });
+    }
     // Store max 3 recent searched cities
     if (user.recentSearchedCities.length < 3) {
       user.recentSearchedCities.push(recentSearchedCity);
